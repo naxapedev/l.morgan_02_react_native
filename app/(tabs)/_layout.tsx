@@ -8,6 +8,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 
 export default function TabLayout() {
   return (
+    
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -25,6 +26,7 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="routes"
         options={{
@@ -34,8 +36,9 @@ export default function TabLayout() {
           ),
         }}
       />
+
        <Tabs.Screen
-        name="dashboard"
+        name="index"
         options={{
           title: "Dashboard",
           tabBarIcon: ({ color }) => (
@@ -70,24 +73,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explore",
-                    href: null,
-
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
-          ),
-        }}
-      />
+     
     </Tabs>
   );
 }

@@ -1,75 +1,216 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useRef, useEffect, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Animated,
+  Dimensions,
+} from "react-native";
+import { Card, Text } from "react-native-paper";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const screenWidth = Dimensions.get("window").width;
 
-export default function HomeScreen() {
+const DashboardScreen = () => {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    
+    <ScrollView style={styles.container}>
+      
+      {/* Top bar with marquee */}
+      <View style={styles.topBar}>
+        <InfiniteMarquee text="f hope pick-up at 10:30 alert: John Doe – 123 Main St – Be ready!" />
+      </View>
+
+      {/* Grid Cards */}
+      <View style={styles.grid}>
+        
+        <DashboardCard icon="map" label="Todays Routes" />
+        <DashboardCard icon="map-marker-plus" label="Stops" />
+        <DashboardCard icon="package-variant" label="WillCalls" />
+        <DashboardCard
+          icon="counter"
+          label="Total Mileage"
+          description="Today's Miles"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <StatusCard />
+      </View>
+    </ScrollView>
   );
-}
+};
+
+// Infinite Marquee Component
+const InfiniteMarquee = ({ text }: { text: string }) => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [textWidth, setTextWidth] = useState(0);
+
+  useEffect(() => {
+    if (textWidth === 0) return;
+
+    const animate = () => {
+      animatedValue.setValue(screenWidth);
+      Animated.timing(animatedValue, {
+        toValue: -textWidth,
+        duration: ((screenWidth + textWidth) / 60) * 1000, // 60 px/sec speed
+        useNativeDriver: true,
+      }).start(() => {
+        animate(); // loop infinitely
+      });
+    };
+
+    animate();
+  }, [textWidth]);
+
+  return (
+    <View style={styles.marqueeContainer}>
+      <Animated.Text
+        onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+        style={[
+          styles.marqueeText,
+          { transform: [{ translateX: animatedValue }] },
+        ]}
+      >
+        {text}
+      </Animated.Text>
+    </View>
+  );
+};
+
+const DashboardCard = ({ icon, label, description = "", color = "#333" }: {
+  icon: string;
+  label: string;
+  description?: string;
+  color?: string;
+}) => (
+  <Card style={styles.card} mode="outlined">
+    <Card.Content style={styles.cardContent}>
+      <Icon name={icon} size={30} color={color} />
+      <Text style={styles.label}>{label}</Text>
+      {description ? (
+        <Text style={styles.description}>{description}</Text>
+      ) : null}
+    </Card.Content>
+  </Card>
+);
+
+const StatusCard = () => (
+  <Card style={styles.statusCard} mode="outlined">
+    <Card.Content style={{ flexDirection: "row" }}>
+      {/* Left: Status List */}
+      <View style={{ flex: 1 }}>
+        <Text variant="titleSmall" style={{ marginBottom: 8 }}>
+          Elid’s status
+        </Text>
+        {[
+          "Wait Elid",
+          "No-Pickup",
+          "Wait Elid",
+          "Toll",
+          "Re-attempt",
+          "Wait Elid",
+        ].map((item, idx) => (
+          <Text key={idx} style={styles.statusItem}>
+            {item.padEnd(15, "_")}pending  
+          </Text>
+        ))}
+      </View>
+
+      {/* Right: 3 Icons in stacked boxes */}
+      <View style={styles.iconColumn}>
+        <View style={styles.iconBox}>
+          <Icon name="cellphone-marker" size={24} />
+        </View>
+        <View style={styles.iconBox}>
+          <Icon name="map-marker" size={24} />
+        </View>
+        <View style={styles.iconBox}>
+          <Icon name="headset" size={24} />
+        </View>
+      </View>
+    </Card.Content>
+  </Card>
+);
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 10,
+    marginTop: "10%",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#000",
+    padding: 8,
+    borderRadius: 6,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  marqueeContainer: {
+    overflow: "hidden",
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    flex: 1,
+    // marginRight: 10,
+  },
+  marqueeText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  card: {
+    width: "48%",
+    backgroundColor: "#FAF9F6",
+    marginBottom: 12,
+    borderRadius: 10,
+  },
+  cardContent: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
+    height: 130,
+  },
+  label: {
+    marginTop: 10,
+    fontWeight: "600",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  description: {
+    fontSize: 12,
+    color: "gray",
+    textAlign: "center",
+  },
+  statusCard: {
+    backgroundColor: "#FAF9F6",
+    width: "100%",
+    borderRadius: 10,
+    marginTop: 5,
+  },
+  statusItem: {
+    fontSize: 13,
+    marginVertical: 2,
+  },
+  iconColumn: {
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  iconBox: {
+    width: 60,
+    height: 60,
+    borderWidth: 1,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 5,
   },
 });
+
+export default DashboardScreen;

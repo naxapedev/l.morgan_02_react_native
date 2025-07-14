@@ -1,12 +1,36 @@
-import { View, Text } from 'react-native';
-import { FC } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import ViewRoutesClinic from '../ViewRouteClinic';
+import { fetchRoutes } from '../../backend/api'; // adjust the path
 
-const stops: FC = () => {
+const Stops = () => {
+  const [clinics, setClinics] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchClinics = async () => {
+      try {
+        const data = await fetchRoutes();
+        setClinics(data);
+      } catch (err) {
+        console.error("Failed to fetch clinics", err);
+      }
+    };
+
+    fetchClinics();
+  }, []);
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>stops Screen</Text>
-    </View>
+    <ScrollView style={styles.container}>
+      <ViewRoutesClinic clinicdata={clinics} />
+    </ScrollView>
   );
 };
 
-export default stops;
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: "#f6f8fa",
+    marginTop: "10%",
+  },
+});
+
+export default Stops;
