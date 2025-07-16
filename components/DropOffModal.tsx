@@ -1,3 +1,4 @@
+// DropOffModal.tsx
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -10,19 +11,14 @@ import {
 } from "react-native";
 import { Button, RadioButton, Checkbox } from "react-native-paper";
 import * as ImagePicker from "expo-image-picker";
-
-type Clinic = {
-  name: string;
-  address: string;
-  addressLink: string;
-  highlighted?: boolean;
-};
+import { upsertRouteSheetDate } from "../backend/api";
 
 type DropOffModalProps = {
   visible: boolean;
   onClose: () => void;
-  clinic: Clinic | null;
+  clinic: any; // use stricter type if needed
 };
+
 const DropOffModal: React.FC<DropOffModalProps> = ({
   visible,
   onClose,
@@ -31,22 +27,41 @@ const DropOffModal: React.FC<DropOffModalProps> = ({
   const [pickupFrom, setPickupFrom] = useState("Key Entry");
   const [supplies, setSupplies] = useState("Yes");
   const [checkLockbox, setCheckLockbox] = useState("Yes");
+  const [checkLockboxCheckbox, setCheckLockboxCheckbox] = useState(false);
   const [pickupTime, setPickupTime] = useState("");
+const [pickupTimeISO, setPickupTimeISO] = useState("");
 
   const [labStaffName, setLabStaffName] = useState("");
-  const [checkLockboxCheckbox, setCheckLockboxCheckbox] = useState(false);
+  const [roomTemp, setRoomTemp] = useState("");
+  const [refrigeratedTemp, setRefrigeratedTemp] = useState("");
+  const [hh, setHH] = useState("");
+  const [bck, setBCK] = useState("");
+  const [other, setOther] = useState("");
+  const [h2o, setH2O] = useState("");
+  const [comment, setComment] = useState("");
+  const [photoUri, setPhotoUri] = useState("");
+
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const showRadioLockbox = pickupFrom === "Key Entry";
   const showCheckboxLockbox =
     pickupFrom === "Lab Staff" || pickupFrom === "Lockbox";
   const showLabStaffInput = pickupFrom === "Lab Staff";
+
   useEffect(() => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const formattedTime = formatAMPM(hours, minutes);
-    setPickupTime(formattedTime);
-  }, []);
+    if (visible) {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const formattedTime = formatAMPM(hours, minutes);
+      setPickupTime(formattedTime);
+      const isoTime = new Date(
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes)
+    ).toISOString(); // e.g., 2025-07-16T10:00:00Z
+
+    setPickupTimeISO(isoTime);
+    }
+  }, [visible]);
 
   const formatAMPM = (hours: number, minutes: number) => {
     const ampm = hours >= 12 ? "PM" : "AM";
@@ -54,55 +69,80 @@ const DropOffModal: React.FC<DropOffModalProps> = ({
     const min = minutes < 10 ? `0${minutes}` : minutes;
     return `${hr}:${min} ${ampm}`;
   };
+
   const handleImagePick = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
 
     if (!permissionResult.granted || !cameraResult.granted) {
-      Alert.alert(
-        "Permission required",
-        "Please grant camera and media library permissions"
-      );
+      Alert.alert("Permission required", "Please grant camera and media library permissions");
       return;
     }
 
-    Alert.alert(
-      "Upload Image",
-      "Choose an option",
-      [
-        {
-          text: "Camera",
-          onPress: async () => {
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              quality: 1,
-            });
-            if (!result.canceled) {
-              console.log("Image from camera:", result.assets[0].uri);
-              // handle result.assets[0].uri
-            }
-          },
+    Alert.alert("Upload Image", "Choose an option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 1,
+          });
+          if (!result.canceled) {
+            setPhotoUri(result.assets[0].uri);
+          }
         },
-        {
-          text: "Gallery",
-          onPress: async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              quality: 1,
-            });
-            if (!result.canceled) {
-              console.log("Image from gallery:", result.assets[0].uri);
-              // handle result.assets[0].uri
-            }
-          },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 1,
+          });
+          if (!result.canceled) {
+            setPhotoUri(result.assets[0].uri);
+          }
         },
-        { text: "Cancel", style: "cancel" },
-      ],
-      { cancelable: true }
-    );
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleSubmit = async () => {
+    // if (!clinic || !clinic.sheet_id) {
+    //   Alert.alert("Error", "Missing route or clinic info");
+    //   return;
+    // }
+// console.log(clinic.sheet_id)
+    const payload = {
+      sheet_id: clinic.sheet_id ,
+      pickuptime: pickupTimeISO,
+      photo: JSON.stringify(photoUri) || null,
+      roomtemp: roomTemp,
+      refrigeratedtemp: refrigeratedTemp,
+      hh,
+      bck,
+      other,
+      h2o,
+      pickupfrom: pickupFrom,
+      labstaff: showLabStaffInput ? labStaffName : null,
+      supplies,
+      checklock: showRadioLockbox ? checkLockbox : checkLockboxCheckbox,
+      comment,
+      pickuplocation: clinic.pickupLocation || null,
+      timezone,
+    };
+
+    try {
+      await upsertRouteSheetDate(payload);
+      Alert.alert("Success", "Drop-off info submitted successfully");
+      onClose();
+    } catch (error) {
+      console.error("Submit error:", error);
+      Alert.alert("Error", "Failed to submit drop-off info");
+    }
   };
 
   return (
@@ -110,42 +150,30 @@ const DropOffModal: React.FC<DropOffModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <ScrollView>
-            
-            <Text style={styles.title}>Upload Proofs</Text>
+            <Text style={styles.title}>Drop-Off Info</Text>
 
             <Text style={styles.label}>Pickup Time</Text>
-            <TextInput
-              style={styles.input}
-              value={pickupTime}
-              editable={false}
-            />
+            <TextInput style={styles.input} value={pickupTime} editable={false} />
 
             <Text style={styles.label}>Room Temp</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              keyboardType="numeric"
-            />
+            <TextInput style={styles.input} value={roomTemp} onChangeText={setRoomTemp} keyboardType="numeric" />
 
             <Text style={styles.label}>Refrigerated Temp</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              keyboardType="numeric"
-            />
+            <TextInput style={styles.input} value={refrigeratedTemp} onChangeText={setRefrigeratedTemp} keyboardType="numeric" />
 
-            {["HH", "BCK", "Other", "H2O"].map((label) => (
-              <View key={label}>
-                <Text style={styles.label}>{label}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-              </View>
-            ))}
+            <Text style={styles.label}>HH</Text>
+            <TextInput style={styles.input} value={hh} onChangeText={setHH} keyboardType="numeric" />
 
-            <Text style={styles.label}>Pickup From:</Text>
+            <Text style={styles.label}>BCK</Text>
+            <TextInput style={styles.input} value={bck} onChangeText={setBCK} keyboardType="numeric" />
+
+            <Text style={styles.label}>Other</Text>
+            <TextInput style={styles.input} value={other} onChangeText={setOther} keyboardType="numeric" />
+
+            <Text style={styles.label}>H2O</Text>
+            <TextInput style={styles.input} value={h2o} onChangeText={setH2O} keyboardType="numeric" />
+
+            <Text style={styles.label}>Pickup From</Text>
             <RadioButton.Group onValueChange={setPickupFrom} value={pickupFrom}>
               <View style={styles.radioRow}>
                 <RadioButton value="Key Entry" />
@@ -158,18 +186,18 @@ const DropOffModal: React.FC<DropOffModalProps> = ({
             </RadioButton.Group>
 
             {showLabStaffInput && (
-              <View style={{ marginBottom: 12 }}>
-                <Text style={styles.label}>Lab Staff Name:</Text>
+              <>
+                <Text style={styles.label}>Lab Staff Name</Text>
                 <TextInput
                   style={styles.input}
                   value={labStaffName}
                   onChangeText={setLabStaffName}
                   placeholder="Enter Lab Staff Name"
                 />
-              </View>
+              </>
             )}
 
-            <Text style={styles.label}>Supplies:</Text>
+            <Text style={styles.label}>Supplies</Text>
             <RadioButton.Group onValueChange={setSupplies} value={supplies}>
               <View style={styles.radioRow}>
                 <RadioButton value="Yes" />
@@ -179,22 +207,17 @@ const DropOffModal: React.FC<DropOffModalProps> = ({
               </View>
             </RadioButton.Group>
 
-            <Text style={styles.label}>Check Lockbox:</Text>
-            {showRadioLockbox && (
-              <RadioButton.Group
-                onValueChange={setCheckLockbox}
-                value={checkLockbox}
-              >
+            <Text style={styles.label}>Check Lockbox</Text>
+            {showRadioLockbox ? (
+              <RadioButton.Group onValueChange={setCheckLockbox} value={checkLockbox}>
                 <View style={styles.radioRow}>
                   <RadioButton value="Yes" />
-                  <Text>Yes </Text>
+                  <Text>Yes</Text>
                   <RadioButton value="No Lockbox" />
                   <Text>No Lockbox</Text>
                 </View>
               </RadioButton.Group>
-            )}
-
-            {showCheckboxLockbox && (
+            ) : (
               <View style={styles.checkboxRow}>
                 <Checkbox
                   status={checkLockboxCheckbox ? "checked" : "unchecked"}
@@ -204,20 +227,21 @@ const DropOffModal: React.FC<DropOffModalProps> = ({
               </View>
             )}
 
-            <Button
-              mode="outlined"
-              style={{ marginVertical: 10 }}
-              onPress={handleImagePick}
-            >
+            <Text style={styles.label}>Comment</Text>
+            <TextInput
+              style={styles.input}
+              value={comment}
+              onChangeText={setComment}
+              placeholder="Any comments"
+              multiline
+            />
+
+            <Button mode="outlined" style={{ marginVertical: 10 }} onPress={handleImagePick}>
               Upload Photo
             </Button>
 
-            <Button
-              mode="contained"
-              buttonColor="green"
-              style={{ marginBottom: 10 }}
-            >
-              PickUp
+            <Button mode="contained" buttonColor="green" style={{ marginBottom: 10 }} onPress={handleSubmit}>
+              Submit Pickup
             </Button>
 
             <Button mode="contained" buttonColor="red" onPress={onClose}>
@@ -241,44 +265,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
-    maxHeight: "95%",
+    maxHeight: "90%",
   },
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   label: {
-    marginTop: 12,
     fontWeight: "600",
+    marginTop: 10,
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 4,
-  },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 4,
-    textAlignVertical: "top",
+    padding: 8,
+    marginBottom: 8,
   },
   radioRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    marginTop: 4,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
   },
 });
 

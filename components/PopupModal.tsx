@@ -15,6 +15,7 @@ const airlineOptions = [
   { label: "United", value: "United" },
 ];
 
+
 interface PopupModalProps {
   visible: boolean;
   onClose: () => void;
@@ -26,6 +27,8 @@ interface PopupModalProps {
   selectedAirline: string;
   setSelectedAirline: (airline: string) => void;
   handleUploadImage: (type: string) => void;
+  date: String;
+  routeName: String;
 }
 
 export const PopupModal: React.FC<PopupModalProps> = ({
@@ -39,7 +42,9 @@ export const PopupModal: React.FC<PopupModalProps> = ({
   selectedAirline,
   setSelectedAirline,
   handleUploadImage,
+  
 }) => (
+  
   <Modal visible={visible} transparent animationType="slide">
     <View style={styles.modalContainer}>
       <Card style={styles.modalCard}>

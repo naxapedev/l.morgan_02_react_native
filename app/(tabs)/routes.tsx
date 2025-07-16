@@ -17,7 +17,7 @@ const Routes = () => {
   };
 
   
-
+// console.log(route_id );
   useEffect(() => {
     const getRoutes = async () => {
       try {
@@ -33,7 +33,6 @@ const Routes = () => {
 
     getRoutes();
   }, []);
-
   if (loading) return <ActivityIndicator style={{ marginTop: 100 }} />;
   return (
     <ScrollView style={{ padding: 10, marginTop: "10%" }}>

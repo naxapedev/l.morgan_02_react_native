@@ -4,25 +4,26 @@ import { Card, Text, Button } from "react-native-paper";
 import { useLocalSearchParams } from "expo-router";
 import DropOffModal from "@/components/DropOffModal"; // Adjust if path is different
 import * as Location from "expo-location";
-import { fetchClinicsByRouteAndDate } from '../backend/api'; // adjust path
-
-
+import { fetchClinicsByRouteAndDate } from "../backend/api"; // adjust path
 
 const ViewRouteClinic = ({ clinicdata }: { clinicdata: any }) => {
-  const {route_id, date, routeName } = useLocalSearchParams();
+  const { route_id, date, routeName } = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<any>(null);
   const [clinics, setClinics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       if (clinicdata && Array.isArray(clinicdata) && clinicdata.length > 0) {
         setClinics(clinicdata);
         setLoading(false);
       } else if (route_id && date) {
         try {
-          const data = await fetchClinicsByRouteAndDate(route_id as string, date as string);
+          const data = await fetchClinicsByRouteAndDate(
+            route_id as string,
+            date as string
+          );
           setClinics(data);
         } catch (err) {
           console.error("Failed to fetch clinics", err);
@@ -35,8 +36,6 @@ const ViewRouteClinic = ({ clinicdata }: { clinicdata: any }) => {
     loadData();
   }, [route_id, date, clinicdata]);
 
- 
-
   const handlePickUp = async (clinic: any) => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -46,23 +45,23 @@ const ViewRouteClinic = ({ clinicdata }: { clinicdata: any }) => {
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
+        // accuracy: Location.Accuracy.Highest,
       });
 
-      const currentCoords = {
+      const currentCoords = JSON.stringify({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         accuracy: location.coords.accuracy,
-      };
-
-      setSelectedClinic({ ...clinic, pickupLocation: currentCoords });
+      });
+      setSelectedClinic({ ...clinic, pickupLocation: currentCoords, route_id: route_id  });
       setModalVisible(true);
     } catch (error) {
       console.error("Error fetching location:", error);
       alert("Unable to fetch location");
     }
   };
-
+  
+  // console.log( selectedClinic)
   return (
     <View style={styles.container}>
       <ScrollView style={styles.container}>
@@ -76,8 +75,10 @@ const ViewRouteClinic = ({ clinicdata }: { clinicdata: any }) => {
             const address1 = clinic?.clinicData?.clinic_address1 || "";
             const city = clinic?.clinicData?.clinic_city || "";
             const fullAddress = `${address1}, ${city}`;
-            const addressLink = `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}`;
-            const routeName1 = clinic?.route?.route_name ||routeName;
+            const addressLink = `https://maps.google.com/?q=${encodeURIComponent(
+              fullAddress
+            )}`;
+            const routeName1 = clinic?.route?.route_name || routeName;
             const sheetDate = clinic?.sheetDate || date;
 
             return (
@@ -119,6 +120,7 @@ const ViewRouteClinic = ({ clinicdata }: { clinicdata: any }) => {
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
           clinic={selectedClinic}
+          // route_id={route_id }
         />
       </ScrollView>
     </View>
